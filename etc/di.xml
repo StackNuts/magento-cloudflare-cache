@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+
+    <!-- Dedicated logger writing to var/log/stacknuts_cloudflare_cache.log -->
+    <virtualType name="StackNuts\CloudflareCache\Logger\Logger" type="Magento\Framework\Logger\Monolog">
+        <arguments>
+            <argument name="name" xsi:type="string">stacknuts_cloudflare_cache</argument>
+            <argument name="handlers" xsi:type="array">
+                <item name="system" xsi:type="object">StackNuts\CloudflareCache\Logger\Handler</item>
+            </argument>
+        </arguments>
+    </virtualType>
+    <type name="StackNuts\CloudflareCache\Model\PurgeCache">
+        <arguments>
+            <argument name="logger" xsi:type="object">StackNuts\CloudflareCache\Logger\Logger</argument>
+        </arguments>
+    </type>
+
+    <!-- Add Cloudflare as a selectable Full Page Cache type -->
+    <type name="Magento\PageCache\Model\System\Config\Source\Application">
+        <plugin name="stacknuts_cloudflare_cache_application_option" type="StackNuts\CloudflareCache\Plugin\Model\System\Config\Source\ApplicationPlugin" />
+    </type>
+
+    <!-- Copy X-Magento-Tags to Cloudflare's Cache-Tag header when tag-based purging is enabled -->
+    <type name="Magento\Framework\View\Layout">
+        <plugin name="stacknuts_cloudflare_cache_tag_header" type="StackNuts\CloudflareCache\Plugin\Model\Layout\CacheTagHeaderPlugin" sortOrder="99" />
+    </type>
+
+    <!-- Strip Set-Cookie on genuinely public/cacheable responses so Cloudflare will actually cache them.
+         sortOrder must run after Magento\PageCache\Model\App\Response\HttpPlugin::beforeSendResponse
+         (sortOrder unset, i.e. 0), which adds a fresh X-Magento-Vary Set-Cookie at this same terminal stage. -->
+    <type name="Magento\Framework\App\Response\Http">
+        <plugin name="stacknuts_cloudflare_strip_session_cookie" type="StackNuts\CloudflareCache\Plugin\Model\App\Response\HttpPlugin" sortOrder="100" />
+    </type>
+
+    <!-- CLI commands -->
+    <type name="Magento\Framework\Console\CommandList">
+        <arguments>
+            <argument name="commands" xsi:type="array">
+                <item name="stacknuts_cloudflare_cache_purge" xsi:type="object">StackNuts\CloudflareCache\Console\Command\PurgeCacheCommand</item>
+                <item name="stacknuts_cloudflare_cache_healthcheck" xsi:type="object">StackNuts\CloudflareCache\Console\Command\HealthcheckCommand</item>
+            </argument>
+        </arguments>
+    </type>
+</config>

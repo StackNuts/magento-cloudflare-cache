@@ -1,0 +1,18 @@
+/vendor/
+/.idea/
+/.vscode/
+/.phpunit.result.cache
+/.env
+/composer.lock
+/node_modules/
+/.DS_Store
+/tests/_output
+
+# Magento generated and runtime dirs (if module repo used inside project)
+/var/
+/generated/
+/pub/static/
+
+# OS files
+Thumbs.db
+Desktop.ini

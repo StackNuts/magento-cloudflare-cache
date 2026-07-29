@@ -1,0 +1,44 @@
+{
+  "name": "stacknuts/magento-cloudflare-cache",
+  "description": "Cloudflare as a first-class Full Page Cache type for Magento 2, with cache tag support for only clearing content that's actually changed.",
+  "type": "magento2-module",
+  "keywords": ["magento2", "cloudflare", "full-page-cache", "fpc", "cache", "cdn"],
+  "homepage": "https://github.com/StackNuts/magento-cloudflare-cache",
+  "authors": [
+    {
+      "name": "Phil Rowe",
+      "email": "stack.nuts@outlook.com"
+    }
+  ],
+  "support": {
+    "issues": "https://github.com/StackNuts/magento-cloudflare-cache/issues",
+    "source": "https://github.com/StackNuts/magento-cloudflare-cache"
+  },
+  "license": [
+    "MIT"
+  ],
+  "require": {
+    "php": "~8.1.0||~8.2.0||~8.3.0||~8.4.0",
+    "magento/framework": ">=103.0 <104",
+    "magento/module-page-cache": ">=100.4 <101",
+    "magento/module-cache-invalidate": ">=100.4 <101",
+    "magento/module-config": ">=101.2 <102",
+    "magento/module-store": ">=100.0 <102"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^10.5 || ^11.5 || ^12.0"
+  },
+  "autoload": {
+    "files": [
+      "registration.php"
+    ],
+    "psr-4": {
+      "StackNuts\\CloudflareCache\\": ""
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "StackNuts\\CloudflareCache\\Test\\": "Test/"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <section id="system">
+            <group id="full_page_cache">
+                <group id="cloudflare" translate="label" showInDefault="1" showInWebsite="1" showInStore="1" sortOrder="610">
+                    <label>Cloudflare Configuration</label>
+                    <depends>
+                        <field id="caching_application">3</field>
+                    </depends>
+                    <field id="zone_id" type="text" translate="label comment" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                        <label>Zone ID</label>
+                        <comment>Found on the Overview page for your domain in the Cloudflare dashboard.</comment>
+                    </field>
+                    <field id="api_token" type="obscure" translate="label comment" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                        <label>API Token</label>
+                        <comment>A Cloudflare API token scoped to the "Zone > Cache Purge" permission for this zone.</comment>
+                        <backend_model>Magento\Config\Model\Config\Backend\Encrypted</backend_model>
+                    </field>
+                    <field id="test_connection" translate="label" sortOrder="25" showInDefault="1" showInWebsite="1" showInStore="1">
+                        <label>Test Connection</label>
+                        <frontend_model>StackNuts\CloudflareCache\Block\Adminhtml\System\Config\TestConnection</frontend_model>
+                    </field>
+                    <field id="purge_mode" translate="label comment" type="select" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                        <label>Purge Mode</label>
+                        <comment>"Purge by tag" targets only the pages affected by each save, and is available on every Cloudflare plan (rate limits scale with plan: Free is the most restrictive at 5 requests/minute). "Full flush only" never purges on individual saves - only on a global cache flush - so affected pages must be purged manually via the Cloudflare dashboard/API, or left to expire via edge TTL.</comment>
+                        <source_model>StackNuts\CloudflareCache\Model\System\Config\Source\PurgeMode</source_model>
+                    </field>
+                    <field id="enable_debug_header" translate="label comment" type="select" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                        <label>Add Debug Header</label>
+                        <comment>Adds an X-Cache-Tags response header (in addition to Cloudflare's own Cache-Tag header) for troubleshooting, when purge mode is "Purge by tag".</comment>
+                        <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    </field>
+                </group>
+            </group>
+        </section>
+    </system>
+</config>

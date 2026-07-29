@@ -1,0 +1,23 @@
+<?php
+/**
+ * Copyright © StackNuts. All rights reserved.
+ * See LICENSE for license details.
+ */
+/** @var \StackNuts\CloudflareCache\Block\Adminhtml\System\Config\TestConnection $block */
+/** @var \Magento\Framework\Escaper $escaper */
+?>
+<button class="scalable" type="button" id="<?= $escaper->escapeHtmlAttr($block->getHtmlId()) ?>"
+        data-mage-init='{"StackNuts_CloudflareCache/js/test-connection": {
+            "url": "<?= $escaper->escapeUrl($block->getAjaxUrl()) ?>",
+            "elementId": "<?= $escaper->escapeHtmlAttr($block->getHtmlId()) ?>"
+        }}'>
+    <span id="<?= $escaper->escapeHtmlAttr($block->getHtmlId()) ?>_result">
+        <?= $escaper->escapeHtml(__('Test Connection')) ?>
+    </span>
+</button>
+<p class="note">
+    <span><?= $escaper->escapeHtml(__(
+        'Save the configuration above first. This purges Cloudflare\'s cache for this store\'s own '
+        . 'hostname only, proving the Zone ID and API Token actually work.'
+    )) ?></span>
+</p>

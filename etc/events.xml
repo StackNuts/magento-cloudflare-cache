@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+    <!-- Tag-scoped purges: mirrors Magento_CacheInvalidate's InvalidateVarnishObserver wiring -->
+    <event name="clean_cache_by_tags">
+        <observer name="stacknuts_cloudflare_purge_by_tags" instance="StackNuts\CloudflareCache\Observer\PurgeCacheByTagsObserver" />
+    </event>
+    <event name="assigned_theme_changed">
+        <observer name="stacknuts_cloudflare_purge_by_tags" instance="StackNuts\CloudflareCache\Observer\PurgeCacheByTagsObserver" />
+    </event>
+    <event name="catalogrule_after_apply">
+        <observer name="stacknuts_cloudflare_purge_by_tags" instance="StackNuts\CloudflareCache\Observer\PurgeCacheByTagsObserver" />
+    </event>
+    <event name="controller_action_postdispatch_adminhtml_system_currency_saveRates">
+        <observer name="stacknuts_cloudflare_purge_by_tags" instance="StackNuts\CloudflareCache\Observer\PurgeCacheByTagsObserver" />
+    </event>
+    <event name="controller_action_postdispatch_adminhtml_system_config_save">
+        <observer name="stacknuts_cloudflare_purge_by_tags" instance="StackNuts\CloudflareCache\Observer\PurgeCacheByTagsObserver" />
+    </event>
+    <event name="controller_action_postdispatch_adminhtml_catalog_product_action_attribute_save">
+        <observer name="stacknuts_cloudflare_purge_by_tags" instance="StackNuts\CloudflareCache\Observer\PurgeCacheByTagsObserver" />
+    </event>
+    <event name="controller_action_postdispatch_adminhtml_catalog_product_massStatus">
+        <observer name="stacknuts_cloudflare_purge_by_tags" instance="StackNuts\CloudflareCache\Observer\PurgeCacheByTagsObserver" />
+    </event>
+    <event name="controller_action_postdispatch_adminhtml_system_currencysymbol_save">
+        <observer name="stacknuts_cloudflare_purge_by_tags" instance="StackNuts\CloudflareCache\Observer\PurgeCacheByTagsObserver" />
+    </event>
+    <event name="clean_cache_after_reindex">
+        <observer name="stacknuts_cloudflare_purge_by_tags" instance="StackNuts\CloudflareCache\Observer\PurgeCacheByTagsObserver" />
+    </event>
+
+    <!-- Full-flush purges: mirrors Magento_CacheInvalidate's FlushAllCacheObserver wiring -->
+    <event name="adminhtml_cache_flush_system">
+        <observer name="stacknuts_cloudflare_flush_all" instance="StackNuts\CloudflareCache\Observer\FlushAllCacheObserver" />
+    </event>
+    <event name="clean_media_cache_after">
+        <observer name="stacknuts_cloudflare_flush_all" instance="StackNuts\CloudflareCache\Observer\FlushAllCacheObserver" />
+    </event>
+    <event name="clean_catalog_images_cache_after">
+        <observer name="stacknuts_cloudflare_flush_all" instance="StackNuts\CloudflareCache\Observer\FlushAllCacheObserver" />
+    </event>
+    <event name="adminhtml_cache_refresh_type">
+        <observer name="stacknuts_cloudflare_flush_all" instance="StackNuts\CloudflareCache\Observer\FlushAllCacheObserver" />
+    </event>
+    <event name="adminhtml_cache_flush_all">
+        <observer name="stacknuts_cloudflare_flush_all" instance="StackNuts\CloudflareCache\Observer\FlushAllCacheObserver" />
+    </event>
+    <event name="assign_theme_to_stores_after">
+        <observer name="stacknuts_cloudflare_flush_all" instance="StackNuts\CloudflareCache\Observer\FlushAllCacheObserver" />
+    </event>
+</config>
