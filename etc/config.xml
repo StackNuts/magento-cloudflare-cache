@@ -22,6 +22,7 @@
                     <queue_enabled>0</queue_enabled>
                     <queue_frequency>5</queue_frequency>
                     <queue_backlog_threshold>50</queue_backlog_threshold>
+                    <log_level>300</log_level>
                 </cloudflare>
             </full_page_cache>
         </system>

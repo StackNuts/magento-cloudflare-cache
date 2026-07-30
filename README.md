@@ -37,6 +37,7 @@ bin/magento setup:upgrade
 
    A purge that fails is retried once on the next drain, then given up on, so one persistently-failing tag or a Cloudflare outage can't wedge the queue open indefinitely.
 8. Optionally enable **Add Debug Header**. Cloudflare's edge strips the `Cache-Tag` header before it reaches the client, so there's normally no way to see which tags a page carries from outside the module. This mirrors the same tag list into an `X-Cache-Tags` response header instead, viewable in any browser's network tab, useful for confirming a page is tagged the way you expect without needing dashboard or API access.
+9. Optionally adjust **Log Level**, default "Warning". Set to "Info" or "Debug" temporarily when troubleshooting a specific issue - Info logs every successful purge, which adds up quickly on a busy store not using the delayed queue. Set to "Off" to disable logging entirely.
 
 ## Monitoring the delayed purge queue
 
@@ -68,7 +69,7 @@ When the **Delayed Purge Queue** is enabled, this also proves the queue actually
 
 ## Logging
 
-Purge attempts and failures are logged to `var/log/stacknuts_cloudflare_cache.log`.
+Purge attempts and failures are logged to `var/log/stacknuts_cloudflare_cache.log`, at a severity controlled by the **Log Level** setting above (default: Warning - configuration problems, drain failures, and the header-size warning, but not the Info-level "purge succeeded" line that fires on every single purge).
 
 ## License
 

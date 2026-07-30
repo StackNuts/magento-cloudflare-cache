@@ -72,6 +72,11 @@
                         <comment>Adds an X-Cache-Tags response header (in addition to Cloudflare's own Cache-Tag header) for troubleshooting, when purge mode is "Purge by tag".</comment>
                         <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     </field>
+                    <field id="log_level" translate="label comment" type="select" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1">
+                        <label>Log Level</label>
+                        <comment>Minimum severity written to var/log/stacknuts_cloudflare_cache.log. "Off" disables logging entirely. Set to "Info" or "Debug" temporarily when troubleshooting a specific issue - Info logs every successful purge, which adds up quickly on a busy store.</comment>
+                        <source_model>StackNuts\CloudflareCache\Model\System\Config\Source\LogLevel</source_model>
+                    </field>
                 </group>
             </group>
         </section>

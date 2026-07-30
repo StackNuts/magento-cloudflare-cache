@@ -12,8 +12,10 @@ use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Encryption\EncryptorInterface;
 use Magento\Framework\Serialize\Serializer\Json;
 use Magento\PageCache\Model\Config as PageCacheConfig;
+use Monolog\Logger as MonologLogger;
 use PHPUnit\Framework\TestCase;
 use StackNuts\CloudflareCache\Model\Config;
+use StackNuts\CloudflareCache\Model\System\Config\Source\LogLevel;
 
 class ConfigTest extends TestCase
 {
@@ -220,5 +222,35 @@ class ConfigTest extends TestCase
         $config = $this->buildConfig($scopeConfig, $this->createStub(PageCacheConfig::class));
 
         $this->assertSame([], $config->getExcludedTagPatterns());
+    }
+
+    public function testGetLogLevelDefaultsToWarning(): void
+    {
+        $scopeConfig = $this->createStub(ScopeConfigInterface::class);
+        $scopeConfig->method('getValue')->willReturn(null);
+
+        $config = $this->buildConfig($scopeConfig, $this->createStub(PageCacheConfig::class));
+
+        $this->assertSame(MonologLogger::WARNING, $config->getLogLevel());
+    }
+
+    public function testGetLogLevelReturnsConfiguredValue(): void
+    {
+        $scopeConfig = $this->createStub(ScopeConfigInterface::class);
+        $scopeConfig->method('getValue')->willReturn((string)MonologLogger::DEBUG);
+
+        $config = $this->buildConfig($scopeConfig, $this->createStub(PageCacheConfig::class));
+
+        $this->assertSame(MonologLogger::DEBUG, $config->getLogLevel());
+    }
+
+    public function testGetLogLevelSupportsOff(): void
+    {
+        $scopeConfig = $this->createStub(ScopeConfigInterface::class);
+        $scopeConfig->method('getValue')->willReturn((string)LogLevel::LEVEL_OFF);
+
+        $config = $this->buildConfig($scopeConfig, $this->createStub(PageCacheConfig::class));
+
+        $this->assertSame(LogLevel::LEVEL_OFF, $config->getLogLevel());
     }
 }

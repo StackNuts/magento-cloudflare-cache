@@ -13,6 +13,7 @@ use Magento\Framework\Encryption\EncryptorInterface;
 use Magento\Framework\Serialize\Serializer\Json;
 use Magento\PageCache\Model\Config as PageCacheConfig;
 use Magento\Store\Model\ScopeInterface;
+use Monolog\Logger as MonologLogger;
 
 /**
  * Reads this module's own configuration and determines whether Cloudflare
@@ -52,6 +53,7 @@ class Config
     private const XML_PATH_QUEUE_FREQUENCY = 'system/full_page_cache/cloudflare/queue_frequency';
     private const XML_PATH_QUEUE_BACKLOG_THRESHOLD = 'system/full_page_cache/cloudflare/queue_backlog_threshold';
     private const XML_PATH_EXCLUDED_TAGS = 'system/full_page_cache/cloudflare/excluded_tags';
+    private const XML_PATH_LOG_LEVEL = 'system/full_page_cache/cloudflare/log_level';
 
     public function __construct(
         private readonly ScopeConfigInterface $scopeConfig,
@@ -185,5 +187,18 @@ class Config
             static fn ($row): string => trim((string)($row['pattern'] ?? '')),
             $rows
         )));
+    }
+
+    /**
+     * Minimum severity this module actually writes to var/log/stacknuts_cloudflare_cache.log -
+     * see Logger\Logger, which gates every call against this. LogLevel::LEVEL_OFF (0) disables
+     * logging entirely. Defaults to Warning: logging every successful purge at Info was filling
+     * the log with one line per save on stores not using the delayed queue.
+     */
+    public function getLogLevel(?int $storeId = null): int
+    {
+        $value = $this->scopeConfig->getValue(self::XML_PATH_LOG_LEVEL, ScopeInterface::SCOPE_STORE, $storeId);
+
+        return $value !== null && $value !== '' ? (int)$value : MonologLogger::WARNING;
     }
 }

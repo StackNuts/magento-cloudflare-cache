@@ -2,8 +2,10 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
 
-    <!-- Dedicated logger writing to var/log/stacknuts_cloudflare_cache.log -->
-    <virtualType name="StackNuts\CloudflareCache\Logger\Logger" type="Magento\Framework\Logger\Monolog">
+    <!-- Raw Monolog writer for var/log/stacknuts_cloudflare_cache.log - always wrapped by the
+         real Logger\Logger class below, which is what actually gates on the admin-configured
+         Log Level before anything reaches this writer. -->
+    <virtualType name="StackNuts\CloudflareCache\Logger\Writer" type="Magento\Framework\Logger\Monolog">
         <arguments>
             <argument name="name" xsi:type="string">stacknuts_cloudflare_cache</argument>
             <argument name="handlers" xsi:type="array">
@@ -11,6 +13,11 @@
             </argument>
         </arguments>
     </virtualType>
+    <type name="StackNuts\CloudflareCache\Logger\Logger">
+        <arguments>
+            <argument name="writer" xsi:type="object">StackNuts\CloudflareCache\Logger\Writer</argument>
+        </arguments>
+    </type>
     <type name="StackNuts\CloudflareCache\Model\PurgeCache">
         <arguments>
             <argument name="logger" xsi:type="object">StackNuts\CloudflareCache\Logger\Logger</argument>
