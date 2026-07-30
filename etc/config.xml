@@ -2,11 +2,26 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
     <default>
+        <crontab>
+            <default>
+                <jobs>
+                    <stacknuts_cloudflarecache_drain_purge_queue>
+                        <schedule>
+                            <cron_expr>*/5 * * * *</cron_expr>
+                        </schedule>
+                    </stacknuts_cloudflarecache_drain_purge_queue>
+                </jobs>
+            </default>
+        </crontab>
         <system>
             <full_page_cache>
                 <cloudflare>
                     <purge_mode>tags</purge_mode>
                     <enable_debug_header>0</enable_debug_header>
+                    <excluded_tags><![CDATA[{"_1000000000000_001":{"pattern":"gql_*"},"_1000000000000_002":{"pattern":"inv_pl*"},"_1000000000000_003":{"pattern":"wishlist_*"},"_1000000000000_004":{"pattern":"compare_item_*"}}]]></excluded_tags>
+                    <queue_enabled>0</queue_enabled>
+                    <queue_frequency>5</queue_frequency>
+                    <queue_backlog_threshold>50</queue_backlog_threshold>
                 </cloudflare>
             </full_page_cache>
         </system>

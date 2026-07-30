@@ -9,6 +9,10 @@
                     <depends>
                         <field id="caching_application">3</field>
                     </depends>
+                    <field id="queue_status" translate="label" sortOrder="5" showInDefault="1" showInWebsite="1" showInStore="1">
+                        <label>Delayed Purge Queue Status</label>
+                        <frontend_model>StackNuts\CloudflareCache\Block\Adminhtml\System\Config\QueueStatus</frontend_model>
+                    </field>
                     <field id="zone_id" type="text" translate="label comment" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
                         <label>Zone ID</label>
                         <comment>Found on the Overview page for your domain in the Cloudflare dashboard.</comment>
@@ -26,6 +30,42 @@
                         <label>Purge Mode</label>
                         <comment>"Purge by tag" targets only the pages affected by each save, and is available on every Cloudflare plan (rate limits scale with plan: Free is the most restrictive at 5 requests/minute). "Full flush only" never purges on individual saves - only on a global cache flush - so affected pages must be purged manually via the Cloudflare dashboard/API, or left to expire via edge TTL.</comment>
                         <source_model>StackNuts\CloudflareCache\Model\System\Config\Source\PurgeMode</source_model>
+                    </field>
+                    <field id="excluded_tags" translate="label comment" sortOrder="31" showInDefault="1" showInWebsite="1" showInStore="1">
+                        <label>Excluded Tag Patterns</label>
+                        <comment>Cache tags matching these patterns are never sent to Cloudflare for purging - useful for tags that could never appear on an actual cached page (e.g. GraphQL's own cache tags), which would otherwise just waste purge-request quota. End a pattern with * to match a prefix (e.g. gql_* matches gql_store_config_1); otherwise it must match a tag exactly. Applies whether the delayed purge queue is on or off.</comment>
+                        <frontend_model>StackNuts\CloudflareCache\Block\Adminhtml\System\Config\Form\Field\ExcludedTagPatterns</frontend_model>
+                        <backend_model>Magento\Config\Model\Config\Backend\Serialized\ArraySerialized</backend_model>
+                        <depends>
+                            <field id="purge_mode">tags</field>
+                        </depends>
+                    </field>
+                    <field id="queue_enabled" translate="label comment" type="select" sortOrder="35" showInDefault="1" showInWebsite="1" showInStore="1">
+                        <label>Enable Delayed Purge Queue</label>
+                        <comment>Off (default) purges every tag instantly on save. On, tags are queued and batched into a single purge on the schedule below instead - useful for high-traffic stores approaching Cloudflare's purge-request rate limit. Only applies in "Purge by tag" mode.</comment>
+                        <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                        <depends>
+                            <field id="purge_mode">tags</field>
+                        </depends>
+                    </field>
+                    <field id="queue_frequency" translate="label comment" type="text" sortOrder="36" showInDefault="1" showInWebsite="1" showInStore="1">
+                        <label>Queue Run Frequency (minutes)</label>
+                        <comment>How often the queue is drained and purged, in minutes. Requires cron to be running (bin/magento cron:run, or the system crontab).</comment>
+                        <backend_model>StackNuts\CloudflareCache\Model\System\Config\Backend\QueueFrequency</backend_model>
+                        <validate>validate-digits validate-greater-than-zero</validate>
+                        <depends>
+                            <field id="purge_mode">tags</field>
+                            <field id="queue_enabled">1</field>
+                        </depends>
+                    </field>
+                    <field id="queue_backlog_threshold" translate="label comment" type="text" sortOrder="37" showInDefault="1" showInWebsite="1" showInStore="1">
+                        <label>Backlog Alert Threshold</label>
+                        <comment>Pending tag count above which an admin warning banner is shown, and the queue is considered backlogged in the status overview above. Adjust based on your store's normal save volume.</comment>
+                        <validate>validate-digits validate-greater-than-zero</validate>
+                        <depends>
+                            <field id="purge_mode">tags</field>
+                            <field id="queue_enabled">1</field>
+                        </depends>
                     </field>
                     <field id="enable_debug_header" translate="label comment" type="select" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
                         <label>Add Debug Header</label>

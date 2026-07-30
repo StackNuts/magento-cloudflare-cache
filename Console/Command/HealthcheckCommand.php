@@ -15,6 +15,7 @@ use Magento\Framework\UrlInterface;
 use Magento\Store\Model\StoreManagerInterface;
 use StackNuts\CloudflareCache\Model\Config;
 use StackNuts\CloudflareCache\Model\PurgeCache;
+use StackNuts\CloudflareCache\Model\ResourceModel\PurgeQueue;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Input\InputInterface;
@@ -26,14 +27,25 @@ use Symfony\Component\Console\Output\OutputInterface;
  * store, not just that the configured credentials are valid (that's what
  * the admin "Test Connection" button checks). Makes real HTTP requests to
  * the live public URL and inspects cf-cache-status/Cache-Control/Set-Cookie,
- * the same checks used to debug this integration manually. Safe to run
- * against a live/production deploy as a post-deploy health check - exits
- * non-zero on any failed check.
+ * the same checks used to debug this integration manually. When a delayed
+ * purge is configured, also forces a real tag through the queue and proves
+ * the drain actually purges Cloudflare, not just that rows can be written
+ * to the table. Safe to run against a live/production deploy as a post-deploy
+ * health check - exits non-zero on any failed check.
  */
 class HealthcheckCommand extends Command
 {
     private const OPTION_URL = 'url';
     private const OPTION_SKIP_PURGE = 'skip-purge';
+
+    /**
+     * Cloudflare's tag-based purge is confirmed accepted synchronously (the purge API call
+     * itself succeeds), but propagating that purge across its global edge network is not
+     * instant - a single immediate re-fetch after a successful purge call was producing false
+     * FAILs here even though the purge had genuinely worked, just not within one round trip.
+     */
+    private const PROPAGATION_MAX_ATTEMPTS = 5;
+    private const PROPAGATION_WAIT_SECONDS = 3;
 
     public function __construct(
         private readonly Config $config,
@@ -41,6 +53,7 @@ class HealthcheckCommand extends Command
         private readonly StoreManagerInterface $storeManager,
         private readonly Curl $curl,
         private readonly State $state,
+        private readonly PurgeQueue $purgeQueue,
         ?string $name = null
     ) {
         parent::__construct($name);
@@ -91,6 +104,19 @@ class HealthcheckCommand extends Command
         }
         $checks[] = ['Zone ID / API Token configured', true, ''];
 
+        $delayEnabled = $this->config->isQueueEnabled();
+        if ($delayEnabled) {
+            $pending = $this->purgeQueue->getPendingCount();
+            $oldestAge = $this->purgeQueue->getOldestPendingAgeInSeconds();
+            $lastRunAt = $this->purgeQueue->getLastRunAt();
+            $output->writeln(sprintf(
+                '<comment>Delayed purge queue: %d tag(s) pending%s. Cron last ran: %s.</comment>',
+                $pending,
+                $oldestAge !== null ? sprintf(' (oldest queued %ds ago)', $oldestAge) : '',
+                $lastRunAt !== null ? sprintf('%ds ago', max(0, time() - $lastRunAt)) : 'never'
+            ));
+        }
+
         $url = $input->getOption(self::OPTION_URL) ?: $this->storeManager->getStore()->getBaseUrl(UrlInterface::URL_TYPE_LINK);
         $hostname = parse_url($url, PHP_URL_HOST);
 
@@ -117,8 +143,14 @@ class HealthcheckCommand extends Command
         $checks[] = $this->checkNoSetCookie($first);
         $checks[] = $this->checkHitOnSecondRequest($first, $second, (bool)$input->getOption(self::OPTION_SKIP_PURGE));
 
+        if ($delayEnabled) {
+            array_push($checks, ...$this->checkDelayedPurgeQueue($url, $second, $output));
+        }
+
         $table = new Table($output);
         $table->setHeaders(['Check', 'Result', 'Detail'])
+            ->setColumnMaxWidth(0, 40)
+            ->setColumnMaxWidth(2, 50)
             ->setRows(array_map(
                 static fn (array $check) => [$check[0], $check[1] ? '<info>PASS</info>' : '<error>FAIL</error>', $check[2]],
                 $checks
@@ -209,5 +241,126 @@ class HealthcheckCommand extends Command
         }
 
         return ['Second request served from Cloudflare cache', false, $detail];
+    }
+
+    /**
+     * Proves the delayed-purge queue actually works end to end - not just that rows can be
+     * written to the table, but that a real drain purges Cloudflare and the page is actually
+     * no longer cached afterward. Reuses PurgeCache/PurgeQueue directly (the same primitives
+     * DrainPurgeQueue's cron job uses) rather than DrainPurgeQueue itself, since this is a
+     * forced, on-demand drain - it deliberately skips the elapsed-since-last-drain gate that
+     * only makes sense for cron's fixed schedule, not an explicit manual check.
+     *
+     * Uses X-Magento-Tags (Magento core's own header, set for any FPC type - not gated on this
+     * module's "Add Debug Header" setting) to get a real tag for the tested page, rather than a
+     * synthetic one, so the final check can prove the actual page cleared, not just the queue.
+     *
+     * @return array[] one or more [label, bool, detail] rows, fewer than 3 if an earlier step failed
+     */
+    private function checkDelayedPurgeQueue(string $url, array $cachedResponse, OutputInterface $output): array
+    {
+        $tagsHeader = (string)($cachedResponse['headers']['x-magento-tags'] ?? '');
+        $tags = array_values(array_filter(array_map('trim', explode(',', $tagsHeader))));
+
+        if (!$tags) {
+            return [[
+                'Delayed purge queue actually drains and purges',
+                false,
+                'No X-Magento-Tags header on the cached response - cannot exercise the queue without a real cache tag.',
+            ]];
+        }
+
+        $this->purgeQueue->enqueue($tags);
+        $maxId = $this->purgeQueue->getMaxId();
+        $queued = $this->purgeQueue->getPendingTags($maxId);
+        $reachedQueue = !array_diff($tags, $queued);
+
+        $checks = [[
+            'Tag purge reaches the delayed queue',
+            $reachedQueue,
+            $reachedQueue
+                ? sprintf('%d tag(s) queued: %s', count($tags), implode(', ', $tags))
+                : 'Enqueued tags were not found in the queue afterward.',
+        ]];
+
+        if (!$reachedQueue) {
+            return $checks;
+        }
+
+        $drained = $this->purgeCache->purgeByTags($tags);
+        if ($drained) {
+            $this->purgeQueue->deleteUpTo($maxId);
+        }
+        $stillQueued = (bool)$this->purgeQueue->getPendingTags($maxId);
+
+        $checks[] = [
+            'Manual drain purges Cloudflare and clears the queue',
+            $drained && !$stillQueued,
+            !$drained
+                ? ('Purge failed: ' . ($this->purgeCache->getLastError() ?? 'unknown error'))
+                : ($stillQueued ? 'Purge succeeded but the queued rows were not cleared.' : 'Purge succeeded and the queue is now empty.'),
+        ];
+
+        if (!$drained) {
+            return $checks;
+        }
+
+        [$pageCleared, $thirdStatus, $attempts] = $this->waitForPurgeToPropagate($url, $output);
+
+        $checks[] = [
+            'Page no longer served from cache after the drain',
+            $pageCleared,
+            $pageCleared
+                ? sprintf('cf-cache-status: %s (after %d attempt(s))', $thirdStatus ?: 'none', $attempts)
+                : sprintf(
+                    'Still showing cf-cache-status: HIT after %d attempt(s) over ~%ds - the purge may need '
+                    . 'longer than that to propagate, or check Cloudflare\'s dashboard directly.',
+                    $attempts,
+                    ($attempts - 1) * self::PROPAGATION_WAIT_SECONDS
+                ),
+        ];
+
+        return $checks;
+    }
+
+    /**
+     * Re-fetches the page a few times, a short wait apart, instead of a single immediate
+     * check - Cloudflare confirms a tag purge synchronously, but propagating it across the
+     * edge network isn't instant, so one immediate re-fetch was producing false FAILs for
+     * purges that had genuinely worked, just not within a single round trip.
+     *
+     * @return array{0: bool, 1: string, 2: int} [cleared, last cf-cache-status seen, attempts made]
+     */
+    private function waitForPurgeToPropagate(string $url, OutputInterface $output): array
+    {
+        for ($attempt = 1; $attempt <= self::PROPAGATION_MAX_ATTEMPTS; $attempt++) {
+            if ($attempt > 1) {
+                $output->writeln(sprintf(
+                    '<comment>Still showing as cached, waiting %ds for the purge to propagate (attempt %d/%d)...</comment>',
+                    self::PROPAGATION_WAIT_SECONDS,
+                    $attempt,
+                    self::PROPAGATION_MAX_ATTEMPTS
+                ));
+                $this->wait(self::PROPAGATION_WAIT_SECONDS);
+            }
+
+            $response = $this->fetch($url);
+            $status = strtoupper((string)($response['headers']['cf-cache-status'] ?? ''));
+
+            if ($status !== 'HIT') {
+                return [true, $status, $attempt];
+            }
+        }
+
+        return [false, $status, $attempt - 1];
+    }
+
+    /**
+     * Wraps the actual sleep() call so tests can override it (e.g. an anonymous subclass with
+     * a no-op body) to exercise the retry loop without genuinely pausing the test suite.
+     */
+    protected function wait(int $seconds): void
+    {
+        sleep($seconds);
     }
 }

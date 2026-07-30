@@ -10,6 +10,7 @@ namespace StackNuts\CloudflareCache\Model;
 
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Encryption\EncryptorInterface;
+use Magento\Framework\Serialize\Serializer\Json;
 use Magento\PageCache\Model\Config as PageCacheConfig;
 use Magento\Store\Model\ScopeInterface;
 
@@ -47,11 +48,16 @@ class Config
     private const XML_PATH_API_TOKEN = 'system/full_page_cache/cloudflare/api_token';
     private const XML_PATH_PURGE_MODE = 'system/full_page_cache/cloudflare/purge_mode';
     private const XML_PATH_DEBUG_HEADER = 'system/full_page_cache/cloudflare/enable_debug_header';
+    private const XML_PATH_QUEUE_ENABLED = 'system/full_page_cache/cloudflare/queue_enabled';
+    private const XML_PATH_QUEUE_FREQUENCY = 'system/full_page_cache/cloudflare/queue_frequency';
+    private const XML_PATH_QUEUE_BACKLOG_THRESHOLD = 'system/full_page_cache/cloudflare/queue_backlog_threshold';
+    private const XML_PATH_EXCLUDED_TAGS = 'system/full_page_cache/cloudflare/excluded_tags';
 
     public function __construct(
         private readonly ScopeConfigInterface $scopeConfig,
         private readonly PageCacheConfig $pageCacheConfig,
-        private readonly EncryptorInterface $encryptor
+        private readonly EncryptorInterface $encryptor,
+        private readonly Json $json
     ) {
     }
 
@@ -102,5 +108,82 @@ class Config
             ScopeInterface::SCOPE_STORE,
             $storeId
         );
+    }
+
+    /**
+     * Whether tag purges are batched through the delayed-purge queue instead of being sent
+     * instantly on every save. Off (default) preserves today's exact instant-purge behavior.
+     */
+    public function isQueueEnabled(?int $storeId = null): bool
+    {
+        return (bool)$this->scopeConfig->isSetFlag(
+            self::XML_PATH_QUEUE_ENABLED,
+            ScopeInterface::SCOPE_STORE,
+            $storeId
+        );
+    }
+
+    /**
+     * How often (in minutes) the queue drain cron actually fires - this directly drives
+     * crontab.xml's schedule (see Model\System\Config\Backend\QueueFrequency), it isn't just
+     * an in-code check, so the job genuinely doesn't run more often than this.
+     */
+    public function getQueueFrequencyMinutes(?int $storeId = null): int
+    {
+        $minutes = (int)$this->scopeConfig->getValue(
+            self::XML_PATH_QUEUE_FREQUENCY,
+            ScopeInterface::SCOPE_STORE,
+            $storeId
+        );
+
+        return max(1, $minutes ?: 5);
+    }
+
+    /**
+     * Pending tag count above which the admin backlog warning is shown.
+     */
+    public function getQueueBacklogThreshold(?int $storeId = null): int
+    {
+        $threshold = (int)$this->scopeConfig->getValue(
+            self::XML_PATH_QUEUE_BACKLOG_THRESHOLD,
+            ScopeInterface::SCOPE_STORE,
+            $storeId
+        );
+
+        return max(1, $threshold ?: 50);
+    }
+
+    /**
+     * Tag patterns that are never sent to Cloudflare for purging - e.g. gql_* tags, which
+     * relate to GraphQL response caching and could never appear in a Cloudflare-cached page's
+     * Cache-Tag header (CacheTagHeaderPlugin only fires on HTML page layout output), so
+     * purging them is a wasted API call against the rate-limit bucket for nothing.
+     *
+     * A trailing "*" matches as a prefix (e.g. "gql_*" matches "gql_store_config_1");
+     * otherwise the pattern must match the tag exactly.
+     *
+     * @return string[]
+     */
+    public function getExcludedTagPatterns(?int $storeId = null): array
+    {
+        $raw = $this->scopeConfig->getValue(self::XML_PATH_EXCLUDED_TAGS, ScopeInterface::SCOPE_STORE, $storeId);
+        if (!$raw) {
+            return [];
+        }
+
+        try {
+            $rows = $this->json->unserialize($raw);
+        } catch (\InvalidArgumentException $e) {
+            return [];
+        }
+
+        if (!is_array($rows)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map(
+            static fn ($row): string => trim((string)($row['pattern'] ?? '')),
+            $rows
+        )));
     }
 }

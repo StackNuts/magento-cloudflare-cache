@@ -1,0 +1,43 @@
+<?php
+/**
+ * Copyright © StackNuts. All rights reserved.
+ * See LICENSE for license details.
+ */
+/** @var \StackNuts\CloudflareCache\Block\Adminhtml\System\Config\QueueStatus $block */
+/** @var \Magento\Framework\Escaper $escaper */
+?>
+<?php if (!$block->isQueueEnabled()): ?>
+    <p class="note">
+        <span><?= $escaper->escapeHtml(__(
+            'The delayed purge queue is currently disabled - tags are purged instantly on save.'
+        )) ?></span>
+    </p>
+<?php else: ?>
+    <?php if ($block->isCronStale()): ?>
+        <div class="message message-warning">
+            <?= $escaper->escapeHtml(__(
+                'The queue drain cron doesn\'t appear to be running (expected roughly every %1 minute(s)). '
+                . 'Check that bin/magento cron:run is being invoked - see the module README.',
+                $block->getFrequencyMinutes()
+            )) ?>
+        </div>
+    <?php endif; ?>
+    <?php if ($block->isBacklogged()): ?>
+        <div class="message message-warning">
+            <?= $escaper->escapeHtml(__(
+                '%1 tag(s) pending - above the configured backlog alert threshold.',
+                $block->getPendingCount()
+            )) ?>
+        </div>
+    <?php endif; ?>
+    <p class="note">
+        <span>
+            <?= $escaper->escapeHtml(__(
+                '%1 tag(s) pending, runs every %2 minute(s), last ran %3.',
+                $block->getPendingCount(),
+                $block->getFrequencyMinutes(),
+                $block->getLastRunLabel()
+            )) ?>
+        </span>
+    </p>
+<?php endif; ?>

@@ -16,6 +16,11 @@
             <argument name="logger" xsi:type="object">StackNuts\CloudflareCache\Logger\Logger</argument>
         </arguments>
     </type>
+    <type name="StackNuts\CloudflareCache\Cron\DrainPurgeQueue">
+        <arguments>
+            <argument name="logger" xsi:type="object">StackNuts\CloudflareCache\Logger\Logger</argument>
+        </arguments>
+    </type>
 
     <!-- Add Cloudflare as a selectable Full Page Cache type -->
     <type name="Magento\PageCache\Model\System\Config\Source\Application">
