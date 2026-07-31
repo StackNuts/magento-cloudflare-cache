@@ -1,5 +1,7 @@
 # StackNuts Cloudflare Cache
 
+[![Latest Version](https://img.shields.io/packagist/v/stacknuts/magento-cloudflare-cache.svg)](https://packagist.org/packages/stacknuts/magento-cloudflare-cache) [![License](https://img.shields.io/packagist/l/stacknuts/magento-cloudflare-cache.svg)](https://github.com/StackNuts/magento-cloudflare-cache/blob/main/LICENSE) [![PHP Version](https://img.shields.io/packagist/php-v/stacknuts/magento-cloudflare-cache.svg)](https://packagist.org/packages/stacknuts/magento-cloudflare-cache)
+
 Cloudflare as a first-class Full Page Cache type for Magento 2, right there in Stores → Configuration → Advanced → System → Full Page Cache, next to Built-in and Varnish, with cache tag support for only clearing content that's actually changed.
 
 ## Why
