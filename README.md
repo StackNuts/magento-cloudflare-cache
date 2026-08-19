@@ -10,6 +10,25 @@ Most Cloudflare integrations for Magento 2 just add support for clearing the who
 
 This module takes the same approach Magento uses for Varnish itself: it adds "Cloudflare" as a genuine `caching_application` option, and wires purge requests into the same core events (`clean_cache_by_tags`, `adminhtml_cache_flush_all`, etc.) that `Magento_CacheInvalidate` uses for Varnish, just pointed at the Cloudflare API instead of a Varnish host. Magento's own tag generation (`X-Magento-Tags`) is untouched; this module mirrors it into a Cloudflare `Cache-Tag` response header on every cacheable page, which is what makes the targeted `tags` purges below possible.
 
+### Why Cloudflare instead of Varnish?
+
+Varnish remains very fast when the request has already reached infrastructure close to the customer. Cloudflare adds value when traffic is geographically distributed, because the response can be served from an edge location near the shopper and the same control plane can handle caching, WAF, bot rules, DNS, SSL, and DDoS protection.
+
+| Concern | Cloudflare | Varnish |
+| --- | --- | --- |
+| Geographic reach | Serves cached responses from 300+ edge locations worldwide | Usually serves from one or a small number of origin locations |
+| Core Web Vitals | For visitors far from the origin, serving cached HTML from a nearby edge can reduce network time and improve real-user TTFB and sometimes LCP | Requests generally travel to the Varnish location before the cached response is returned; the benefit depends more on origin geography |
+| Configuration | Dashboard and API rules; no VCL deployment required | VCL gives detailed control, but changes require VCL/config management |
+| Security and traffic controls | CDN, WAF, bot rules, DNS, SSL, and DDoS protection in one service | Primarily an HTTP cache; security controls generally come from other infrastructure |
+| Existing ecosystem investment | A natural fit if DNS, WAF, bot management, SSL, DDoS protection, and other traffic controls already run in Cloudflare; caching stays in the same control plane | Adds another cache layer and operational surface alongside those existing Cloudflare services |
+| Observability | Cache status, hit ratio, bandwidth, and threat/bot reporting, depending on plan | Detailed cache behavior is available at the Varnish layer; other traffic reporting needs additional tooling |
+| Origin resilience | Existing edge-cached responses can continue to be served during a temporary origin outage when the relevant Cloudflare settings allow it | Cached responses can survive some origin failures, but the cache is still located near the origin |
+| Cache invalidation | This module can purge Cloudflare by Magento cache tags or flush the zone | Magento can invalidate Varnish through its native cache invalidation integration |
+
+Caching primarily improves network time and TTFB, which can contribute to better LCP for geographically distant visitors; it does not guarantee an improvement to every Core Web Vital. Measure the effect with real-user data such as CrUX, Search Console, or your RUM tooling.
+
+The security, bot-management, origin-resilience, and observability features available in Cloudflare depend on the account plan and enabled settings. Confirm the capabilities of your plan before treating them as part of the caching design.
+
 ## Installation
 
 ```bash
@@ -18,7 +37,18 @@ bin/magento module:enable StackNuts_CloudflareCache
 bin/magento setup:upgrade
 ```
 
-## Configuration
+The module requires PHP 8.1-8.4 and Magento components matching the version constraints in [composer.json](composer.json#L25-L31).
+
+## Quick start
+
+1. Create a Cloudflare API token with **Zone → Cache Purge** permission for the storefront zone.
+2. Add a Cloudflare Cache Rule for the storefront hostname with **Eligible for cache** and Edge TTL/Browser TTL set to **Respect origin TTL**.
+3. Select **Cloudflare** as Magento's **Caching Application**, then enter the Cloudflare Zone ID and API Token under **Cloudflare Configuration**.
+4. Run `bin/magento stacknuts:cloudflare-cache:healthcheck` and confirm the storefront changes from `cf-cache-status: MISS` to `HIT` on the next request.
+
+See **Detailed configuration** below for purge modes, tag exclusions, the delayed purge queue, debug headers, and logging.
+
+## Detailed configuration
 
 1. In the Cloudflare dashboard, create an API token scoped to **Zone → Cache Purge** for the zone you want to manage.
 2. **Add a Cache Rule for your storefront hostname** (Caching → Cache Rules): hostname equals your store's domain, action **Eligible for cache**, Edge TTL and Browser TTL both **Respect origin TTL**. This step is required: Cloudflare does not cache HTML by default, only recognized static file extensions, so without this rule the module's purges have nothing to do and every page request shows `cf-cache-status: DYNAMIC` or `BYPASS` regardless of how caching is configured in Magento. "Respect origin TTL" matters too: Magento already sends the correct `Cache-Control` per page (public for cacheable pages, private/no-store for cart, checkout, customer account, admin), so overriding the edge TTL instead of respecting origin risks caching pages Magento explicitly marked private.
