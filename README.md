@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./.github/banner.png" alt="StackNuts Cloudflare Cache" width="100%">
+</p>
+
 # StackNuts Cloudflare Cache
 
 [![Latest Version](https://img.shields.io/packagist/v/stacknuts/magento-cloudflare-cache.svg)](https://packagist.org/packages/stacknuts/magento-cloudflare-cache) [![License](https://img.shields.io/packagist/l/stacknuts/magento-cloudflare-cache.svg)](https://github.com/StackNuts/magento-cloudflare-cache/blob/main/LICENSE) [![PHP Version](https://img.shields.io/packagist/php-v/stacknuts/magento-cloudflare-cache.svg)](https://packagist.org/packages/stacknuts/magento-cloudflare-cache)
