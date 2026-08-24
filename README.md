@@ -8,6 +8,8 @@
 
 Cloudflare as a first-class Full Page Cache type for Magento 2, right there in Stores → Configuration → Advanced → System → Full Page Cache, next to Built-in and Varnish, with cache tag support for only clearing content that's actually changed.
 
+![Full Page Cache configuration screen, with the Delayed Purge Queue Status flagging a stalled drain cron and a 687-tag backlog](.github/screenshots/admin-config.png)
+
 ## Why
 
 Most Cloudflare integrations for Magento 2 just add support for clearing the whole cache and administering Cloudflare's settings from the Magento admin. Cloudflare never becomes a first-class choice in the admin, and cache invalidation stays all-or-nothing: any change purges everything, whether it's one product or the whole catalog.
