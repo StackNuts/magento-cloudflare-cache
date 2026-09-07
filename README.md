@@ -105,6 +105,18 @@ This makes real HTTP requests to your store's public URL (through whatever DNS/p
 
 When the **Delayed Purge Queue** is enabled, this also proves the queue actually works rather than just reporting how many tags are currently waiting in it: it takes a real tag from the cached page's own `X-Magento-Tags` header, pushes it through the same queue a real save would, forces an immediate drain (bypassing the cron schedule so the check doesn't have to wait), and fetches the page a third time to confirm it's no longer served from cache. This proves the write to the queue, the drain, and the actual Cloudflare purge all work, not just that rows can be written to a table.
 
+## StackGauge fleet dashboard integration (optional)
+
+This module has no dependency on, or awareness of,
+[`stacknuts/magento-stackgauge`](https://github.com/StackNuts/magento-stackgauge) - install
+[`stacknuts/magento-cloudflare-cache-stackgauge`](https://github.com/StackNuts/magento-cloudflare-cache-stackgauge)
+alongside both to report whether Cloudflare is the active cache type and the current
+delayed-purge-queue backlog into a StackGauge fleet report, with no configuration on this
+module's side. That compatibility module - not this one - is where the integration code
+lives, following the same pattern Magento core uses for optional cross-module features
+(e.g. `Magento_CatalogInventoryGraphQl`): a small module named after the pair it bridges,
+so neither parent module needs to know the other exists.
+
 ## Logging
 
 Purge attempts and failures are logged to `var/log/stacknuts_cloudflare_cache.log`, at a severity controlled by the **Log Level** setting above (default: Warning - configuration problems, drain failures, and the header-size warning, but not the Info-level "purge succeeded" line that fires on every single purge).
