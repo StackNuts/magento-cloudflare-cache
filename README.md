@@ -109,7 +109,7 @@ When the **Delayed Purge Queue** is enabled, this also proves the queue actually
 
 This module has no dependency on, or awareness of,
 [`stacknuts/magento-stackgauge`](https://github.com/StackNuts/magento-stackgauge) - install
-[`stacknuts/magento-cloudflare-cache-stackgauge`](https://github.com/StackNuts/magento-cloudflare-cache-stackgauge)
+[`stacknuts/magento-stackgauge-cloudflare-cache`](https://github.com/StackNuts/magento-stackgauge-cloudflare-cache)
 alongside both to report whether Cloudflare is the active cache type and the current
 delayed-purge-queue backlog into a StackGauge fleet report, with no configuration on this
 module's side. That compatibility module - not this one - is where the integration code
