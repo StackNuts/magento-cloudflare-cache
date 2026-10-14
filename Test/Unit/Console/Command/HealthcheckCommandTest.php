@@ -10,6 +10,7 @@ namespace StackNuts\CloudflareCache\Test\Unit\Console\Command;
 
 use Magento\Framework\App\State;
 use Magento\Framework\HTTP\Client\Curl;
+use Magento\Framework\HTTP\Client\CurlFactory;
 use Magento\Store\Model\Store;
 use Magento\Store\Model\StoreManagerInterface;
 use PHPUnit\Framework\TestCase;
@@ -59,6 +60,14 @@ class HealthcheckCommandTest extends TestCase
         return $storeManager;
     }
 
+    private function factoryFor(Curl $curl): CurlFactory
+    {
+        $factory = $this->createStub(CurlFactory::class);
+        $factory->method('create')->willReturn($curl);
+
+        return $factory;
+    }
+
     /**
      * Always builds the no-op-wait anonymous subclass (see below) rather than the real
      * HealthcheckCommand, so no test can ever accidentally sleep for real seconds regardless
@@ -75,7 +84,7 @@ class HealthcheckCommandTest extends TestCase
             $config,
             $purgeCache ?? $this->createStub(PurgeCache::class),
             $storeManager ?? $this->buildStoreManager(),
-            $curl,
+            $this->factoryFor($curl),
             $this->createStub(State::class),
             $purgeQueue ?? $this->createStub(PurgeQueue::class)
         ) extends HealthcheckCommand {

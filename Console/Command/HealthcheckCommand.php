@@ -10,7 +10,7 @@ namespace StackNuts\CloudflareCache\Console\Command;
 
 use Magento\Framework\App\Area;
 use Magento\Framework\App\State;
-use Magento\Framework\HTTP\Client\Curl;
+use Magento\Framework\HTTP\Client\CurlFactory;
 use Magento\Framework\UrlInterface;
 use Magento\Store\Model\StoreManagerInterface;
 use StackNuts\CloudflareCache\Model\Config;
@@ -51,7 +51,7 @@ class HealthcheckCommand extends Command
         private readonly Config $config,
         private readonly PurgeCache $purgeCache,
         private readonly StoreManagerInterface $storeManager,
-        private readonly Curl $curl,
+        private readonly CurlFactory $curlFactory,
         private readonly State $state,
         private readonly PurgeQueue $purgeQueue,
         ?string $name = null
@@ -172,11 +172,13 @@ class HealthcheckCommand extends Command
      */
     private function fetch(string $url): array
     {
-        $this->curl->get($url);
+        // A fresh client - never one that might still carry another caller's headers.
+        $curl = $this->curlFactory->create();
+        $curl->get($url);
 
         return [
-            'status' => $this->curl->getStatus(),
-            'headers' => array_change_key_case($this->curl->getHeaders(), CASE_LOWER),
+            'status' => $curl->getStatus(),
+            'headers' => array_change_key_case($curl->getHeaders(), CASE_LOWER),
         ];
     }
 

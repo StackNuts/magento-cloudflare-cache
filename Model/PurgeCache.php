@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace StackNuts\CloudflareCache\Model;
 
-use Magento\Framework\HTTP\Client\Curl;
+use Magento\Framework\HTTP\Client\CurlFactory;
 use Magento\Framework\Serialize\Serializer\Json;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -28,8 +28,13 @@ class PurgeCache
 
     private ?string $lastError = null;
 
+    /**
+     * A CurlFactory, not a Curl: Magento shares one Curl instance per process and headers set on
+     * it persist, so the Cloudflare API token set below would otherwise be sent with whatever that
+     * shared client requests next (HealthcheckCommand's own storefront fetch did exactly that).
+     */
     public function __construct(
-        private readonly Curl $curl,
+        private readonly CurlFactory $curlFactory,
         private readonly Config $config,
         private readonly Json $json,
         private readonly LoggerInterface $logger
@@ -106,17 +111,18 @@ class PurgeCache
         }
 
         try {
-            $this->curl->setHeaders([
+            $curl = $this->curlFactory->create();
+            $curl->setHeaders([
                 'Authorization' => 'Bearer ' . $apiToken,
                 'Content-Type' => 'application/json',
             ]);
-            $this->curl->post(
+            $curl->post(
                 sprintf('https://api.cloudflare.com/client/v4/zones/%s/purge_cache', $zoneId),
                 $this->json->serialize($payload)
             );
 
-            $status = $this->curl->getStatus();
-            $response = $this->json->unserialize($this->curl->getBody() ?: '{}');
+            $status = $curl->getStatus();
+            $response = $this->json->unserialize($curl->getBody() ?: '{}');
             $success = $status === 200 && !empty($response['success']);
 
             if ($success) {

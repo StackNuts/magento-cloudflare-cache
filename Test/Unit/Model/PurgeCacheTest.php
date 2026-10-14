@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace StackNuts\CloudflareCache\Test\Unit\Model;
 
 use Magento\Framework\HTTP\Client\Curl;
+use Magento\Framework\HTTP\Client\CurlFactory;
 use Magento\Framework\Serialize\Serializer\Json;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -17,6 +18,14 @@ use StackNuts\CloudflareCache\Model\PurgeCache;
 
 class PurgeCacheTest extends TestCase
 {
+    private function factoryFor(Curl $curl): CurlFactory
+    {
+        $factory = $this->createStub(CurlFactory::class);
+        $factory->method('create')->willReturn($curl);
+
+        return $factory;
+    }
+
     private function createConfig(?string $zoneId = 'zone-1', ?string $apiToken = 'token-1', string $purgeMode = Config::PURGE_MODE_TAGS): Config
     {
         $config = $this->createStub(Config::class);
@@ -40,7 +49,7 @@ class PurgeCacheTest extends TestCase
         $curl->method('getStatus')->willReturn(200);
         $curl->method('getBody')->willReturn(json_encode(['success' => true]));
 
-        $purgeCache = new PurgeCache($curl, $this->createConfig(), new Json(), $this->createStub(LoggerInterface::class));
+        $purgeCache = new PurgeCache($this->factoryFor($curl), $this->createConfig(), new Json(), $this->createStub(LoggerInterface::class));
 
         $this->assertTrue($purgeCache->purgeAll());
     }
@@ -51,7 +60,7 @@ class PurgeCacheTest extends TestCase
         $curl->expects($this->never())->method('post');
 
         $purgeCache = new PurgeCache(
-            $curl,
+            $this->factoryFor($curl),
             $this->createConfig(null, null),
             new Json(),
             $this->createStub(LoggerInterface::class)
@@ -66,7 +75,7 @@ class PurgeCacheTest extends TestCase
         $curl->expects($this->never())->method('post');
 
         $purgeCache = new PurgeCache(
-            $curl,
+            $this->factoryFor($curl),
             $this->createConfig('zone-1', 'token-1', Config::PURGE_MODE_FULL_FLUSH_ONLY),
             new Json(),
             $this->createStub(LoggerInterface::class)
@@ -84,7 +93,7 @@ class PurgeCacheTest extends TestCase
         $curl->method('getStatus')->willReturn(200);
         $curl->method('getBody')->willReturn(json_encode(['success' => true]));
 
-        $purgeCache = new PurgeCache($curl, $this->createConfig(), new Json(), $this->createStub(LoggerInterface::class));
+        $purgeCache = new PurgeCache($this->factoryFor($curl), $this->createConfig(), new Json(), $this->createStub(LoggerInterface::class));
 
         $this->assertTrue($purgeCache->purgeByTags($tags));
     }
@@ -94,7 +103,7 @@ class PurgeCacheTest extends TestCase
         $curl = $this->createMock(Curl::class);
         $curl->expects($this->never())->method('post');
 
-        $purgeCache = new PurgeCache($curl, $this->createConfig(), new Json(), $this->createStub(LoggerInterface::class));
+        $purgeCache = new PurgeCache($this->factoryFor($curl), $this->createConfig(), new Json(), $this->createStub(LoggerInterface::class));
 
         $this->assertTrue($purgeCache->purgeByTags([]));
     }
@@ -111,7 +120,7 @@ class PurgeCacheTest extends TestCase
         $curl->method('getStatus')->willReturn(200);
         $curl->method('getBody')->willReturn(json_encode(['success' => true]));
 
-        $purgeCache = new PurgeCache($curl, $this->createConfig(), new Json(), $this->createStub(LoggerInterface::class));
+        $purgeCache = new PurgeCache($this->factoryFor($curl), $this->createConfig(), new Json(), $this->createStub(LoggerInterface::class));
 
         $this->assertTrue($purgeCache->purgeHost('example.com'));
         $this->assertNull($purgeCache->getLastError());
@@ -126,7 +135,7 @@ class PurgeCacheTest extends TestCase
             'errors' => [['code' => 6003, 'message' => 'Invalid request headers']],
         ]));
 
-        $purgeCache = new PurgeCache($curl, $this->createConfig(), new Json(), $this->createStub(LoggerInterface::class));
+        $purgeCache = new PurgeCache($this->factoryFor($curl), $this->createConfig(), new Json(), $this->createStub(LoggerInterface::class));
 
         $this->assertFalse($purgeCache->purgeHost('example.com'));
         $this->assertSame('Invalid request headers', $purgeCache->getLastError());
@@ -135,7 +144,7 @@ class PurgeCacheTest extends TestCase
     public function testGetLastErrorWhenNotConfigured(): void
     {
         $purgeCache = new PurgeCache(
-            $this->createStub(Curl::class),
+            $this->createStub(CurlFactory::class),
             $this->createConfig(null, null),
             new Json(),
             $this->createStub(LoggerInterface::class)
